@@ -1,0 +1,303 @@
+=====================================================
+
+2I015 - COMPTE-RENDU TME 3 (Entrées/sorties)
+
+Noms, prénoms et numéro des étudiants du binôme :
+1)Huang Zhe 28620131
+2)Lang Dongyi 28620129
+
+=====================================================
+
+
+EXERCICE 1 : TUBES ANONYMES
+===========================
+#include<unistd.h>
+#include<time.h>
+#include<stdio.h>
+#include<stdlib.h>
+
+int main(int argc,char* argv[]){
+	pid_t pid;
+	int tube[2];
+	srand(time(NULL));
+	
+	// création de la tude anonyme
+	if (pipe(tube) != 0){ 
+		printf("Erreur de création de la tube!\n");
+		exit(EXIT_FAILURE);
+	}
+	// le premier fils
+	if ((pid = fork()) == 0){
+		int alea = rand()%(99-0+1);
+		close(tube[0]);
+		write(tube[1],&alea,sizeof(int));
+		printf("Le fils 1 a ecrit le nb\n");
+		close(tube[1]);
+		exit(EXIT_SUCCESS);
+	}
+	// le second fils
+	if ((pid = fork()) == 0){
+		int alea;
+		close(tube[1]);
+		read(tube[0],&alea,sizeof(int));
+		printf("Le fils 2 a lu le nb : %d\n",alea);
+		close(tube[0]);
+		exit(EXIT_SUCCESS);
+	}
+	
+	exit(EXIT_SUCCESS);
+}
+
+
+
+EXERCICE 2 : TUBES NOMMES
+=========================
+// exo2a
+#include<time.h>
+#include<stdlib.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#define FIFO "./fifo"
+#include<stdio.h>
+#include<fcntl.h>
+#include<unistd.h>
+
+int main(int argc, char* argv[]){
+	srand(time(NULL));
+	extern int errno;
+	
+	// création du tube nommée
+	int fifo = mkfifo(FIFO, 0777);
+	if (fifo == -1){
+		printf("error1 = %d\n", errno);
+		exit(1);
+	}
+	
+	// ouvert du tube nommée
+	int fd;
+	fd = open(FIFO, O_WRONLY);
+	if (fd == -1){
+		printf("error2 = %d\n", errno);
+		exit(1);
+	}
+	
+	// on donne la valeur au tube
+	int alea = rand()%100;
+	if (write(fd, &alea, sizeof(int)) == -1){
+		printf("error3 = %d\n", errno);
+		exit(1);
+	}else{
+		printf("2a a ecrit le nb : %d\n", alea);
+	}
+	
+	// on fait le fermeture
+	close(fd);
+	unlink(FIFO);
+
+	return 0;	
+}
+// exo2b
+#include<time.h>
+#include<stdlib.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#define FIFO "./fifo"
+#include<stdio.h>
+#include<fcntl.h>
+#include<unistd.h>
+
+int main(int argc, char* argv[]){
+	extern int errno;
+	
+	// ouvert du tube nommée
+	int fd = open(FIFO, O_RDONLY);
+	if (fd == -1){
+		printf("error1 = %d\n", errno);
+		exit(1);
+	}
+	
+	// lecture du tube
+	int alea; 
+	if (read(fd, &alea, sizeof(int)) == -1){
+		printf("error2 = %d\n", errno);
+		exit(1);
+	}else{
+		printf("2b a lu le nb : %d\n", alea);	
+	}
+	
+	// fermeture du tube
+	close(fd);
+	
+	return 0;
+}
+
+
+EXERCICE 3 : OUVERTURES MULTIPLES ET PARTAGE D'OFFSET
+=====================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+
+int main(int argc, char * argv[]) {
+  	int fd;
+  	char lu;
+  	int i;
+  	pid_t pid;
+
+	printf("Le pere %d commence\n", getpid());
+	
+  	// on ouvert le "test.txt"
+  	fd = open(argv[1], O_RDONLY);
+  	if (fd == -1){
+    	printf("%s n'existe pas\n", argv[1]);
+    	exit(EXIT_FAILURE);
+	}else{
+		// le premier fils
+    	pid = fork();
+    	if (pid < 0){  
+      		printf("fork error\n");
+      		close(fd);
+      		exit(EXIT_FAILURE);
+    	}
+    	if (pid > 0){ 
+      		wait(NULL); // le père attent le permier fils
+		}
+		if (pid == 0){ // on est dans le fils 
+        	printf("Le premier fils %d commence\n", getpid());
+ 			for (i = 0; i < 3;i++){
+   				if ((read(fd, &lu, sizeof(char))) > 0){
+     				printf("%d a lu %c\n", getpid(), lu);
+   				}else{
+     				printf("reading error\n");
+     				close(fd);
+     				exit(EXIT_FAILURE);
+   				}
+  			}
+  			printf("Le fils %d se termine\n", getpid());
+  			close(fd);
+  			exit(EXIT_SUCCESS);
+  		}
+		
+		// on est dans le père
+    	if ((read(fd, &lu, sizeof(char))) > 0) {
+      		printf("%d a lu %c\n", getpid(), lu);
+    	}else{
+      		printf("reading error\n");
+      		close(fd);
+      		exit(EXIT_FAILURE);
+    	}
+		
+		// le second fils
+		pid = fork(); 
+    	if (pid < 0){
+      		printf("fork error\n");
+      		close(fd);
+      		exit(EXIT_FAILURE);
+    	}
+      	if (pid > 0){ // le père attent le second fils 
+      		wait(NULL);
+      	}
+      	if (pid == 0){ 
+        	printf("Le second fils %d commence\n", getpid());
+ 			for (i = 0 ; i < 3 ; i++) {
+   				if (read(fd, &lu, sizeof(char)) > 0) {
+   					printf("%d a lu %c\n", getpid(), lu);
+   				}else{
+     				printf("reading error\n");
+     				close(fd);
+     				exit(EXIT_FAILURE);
+    			}
+   			}
+   			printf("Le fils %d se termine\n", getpid());
+   			close(fd);
+   			exit(EXIT_SUCCESS);
+      	}
+	}
+    
+    close(fd); 
+	
+    // le troisième fils
+    pid = fork();
+    if (pid < 0){
+      	printf("fork error\n");
+      	exit(EXIT_FAILURE);
+      	}	
+    if (pid > 0){ // le père attent le troisième fils 
+    	wait(NULL);
+    }
+    if (pid == 0){ 
+        printf("Le troisieme fils %d commence\n", getpid());
+        if ((fd = open(argv[1], O_RDONLY)) == -1){
+   			printf("open failed\n");
+   			close(fd);
+   			exit(EXIT_FAILURE);
+   		}else{
+   			for (i = 0 ; i < 4 ; i++) {
+     		if (read(fd, &lu, sizeof(char)) > 0) {
+       			printf("%d a lu %c\n", getpid(), lu);
+     		}else{
+       			printf("reading error\n");
+       			close(fd);
+       			exit(EXIT_FAILURE);
+     		}
+   			}
+   			printf("Le fils %d se termine\n", getpid());
+   			close(fd);
+   			exit(EXIT_SUCCESS);
+ 		}
+    }
+    
+    printf("Le pere %d se termine\n", getpid());
+    
+    exit(EXIT_SUCCESS);
+}
+
+
+
+EXERCICE 4 : INCOHERENCES DUES AUX COMMUTATIONS
+===============================================
+
+QUESTION 1 :
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+int main(int argc,char* args[]){
+	pid_t pid;
+	if ((pid = fork()) == 0){
+		execl("./exo4a","./exo4a","exo4.txt",NULL);
+	}else{
+		execl("./exo4a","./exo4a","exo4.txt",NULL);
+	}
+	exit(EXIT_SUCCESS);
+}
+
+QUESTION 2 :
+9465 : premiere ecriture
+/* S'il y a une commutation avant le premier open, on execute le dueuxieme open de maniere preemptif, ensuite on execute le premier open et on ecrase du coup le fichier avec l'ecriture */
+
+QUESTION 3 :
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main(int argc,char* args[]){
+	pid_t pid;
+	if ((pid = fork()) == 0){
+		execl("./exo4a","./exo4a","exo4.txt",NULL);
+	}else{
+		wait(NULL);
+		execl("./exo4a","./exo4a","exo4.txt",NULL);
+	}
+	exit(EXIT_SUCCESS);
+}

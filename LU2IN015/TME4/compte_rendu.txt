@@ -1,0 +1,412 @@
+=====================================================
+
+2I015 - COMPTE-RENDU TME 4 (Verrouillage)
+
+Noms, prénoms et numéro des étudiants du binôme :
+1)Huang Zhe 28620131
+2)Lang Dongyi 28620129
+
+=====================================================
+
+
+EXERCICE 1 : Première et deuxième écritures
+===========================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+
+int main(int argc,char* args[]){
+	pid_t pid;
+	if ((pid = fork()) == 0){
+		int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_LOCK,0);
+		
+		execl("./exo1a","exo1a","exo1.txt",NULL);
+		
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_ULOCK,0);
+		close(verrou);
+	}else{
+		int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_LOCK,0);
+		
+		execl("./exo1a","exo1a","exo1.txt",NULL);
+		
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_ULOCK,0);
+		close(verrou);
+	}
+	exit(EXIT_SUCCESS);
+}
+
+
+EXERCICE 2 : Atchoum et Dormeur
+===============================
+
+Question 1 : 
+Toute journée sera correcte.
+I y a des verrou dans les deux procussus. 
+exo2b.c et exo2a.c ne peut pas exécuté de manière concurrente.
+C à d Dormeur(Atchoum) ne peut pas aller à les toilettes le premier foi avant Atchoum(Dormeur) sort les toilettes le dernier foi.
+ 
+Question 2 :
+le problem est que Dormeur et Atchoum ne sont pas dans le meme jour dues aux verrouillages.
+C'est pas rationnel.
+
+Question 3 :
+// exo2a.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+
+int main(int argc, char *argv[]){
+
+	srand(getpid());
+	int i,k;
+	
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	printf("Dormeur rentre aux toilettes\n");
+	
+	sleep(1);
+	for(k=rand()%10;k>=0;k--){
+		printf("Dormeur sort des toilettes\n");
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_ULOCK,0);
+
+		for(i=rand()%6;i>=0;i--){
+			printf("Dormeur\n");
+			sleep(1);
+		}
+
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_LOCK,0);
+		printf("Dormeur rentre aux toilettes\n");
+		
+		sleep(1);
+	}
+	
+	printf("Dormeur sort des toilettes\n");
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+
+	exit(EXIT_SUCCESS);
+}
+
+// exo2b.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+
+int main(int argc, char *argv[]){
+
+	srand(getpid());
+	int i,k;
+	
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+
+	for(k=rand()%10;k>=0;k--){
+		for(i=rand()%4;i>=0;i--){
+			printf("Atchoum !\n");
+			sleep(1);
+		}
+		
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_LOCK,0);
+		printf("Atchoum rentre aux toilettes\n");
+		
+		sleep(1);
+		
+		printf("Atchoum sort des toilettes\n");
+		lseek(verrou,0,SEEK_SET);
+		lockf(verrou,F_ULOCK,0);
+		
+		for(i=rand()%4;i>=0;i--){
+			printf("Atchoum !\n");
+			sleep(1);
+		}
+	}
+
+	close(verrou);
+
+	exit(EXIT_SUCCESS);
+}
+
+
+EXERCICE 3 : Allons faire un tour à la piscine...
+=================================================
+
+Question 1 : 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+
+void prise(int fd){
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	
+	int nb;
+	lseek(fd,0,SEEK_SET);
+	read(fd,&nb,sizeof(int));
+	while (nb == 0){
+		sleep(1);
+		lseek(fd,0,SEEK_SET);
+		read(fd,&nb,sizeof(int));
+	}
+	nb--;
+	lseek(fd,0,SEEK_SET);
+	write(fd,&nb,sizeof(int));
+	
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+}
+
+void liberation(int fd){
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	
+	int nb;
+	lseek(fd,0,SEEK_SET);
+	read(fd,&nb,sizeof(int));
+	nb++;
+	lseek(fd,0,SEEK_SET);
+	write(fd,&nb,sizeof(int));
+	
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+}
+
+
+int main(int argc,char *argv[]){
+	if (argc != 2){
+		exit(EXIT_FAILURE);
+	}
+	
+	srand(getpid());
+	int paniers = open("./paniers",O_RDWR,S_IRUSR|S_IWUSR);
+	int cabines = open("./cabines",O_RDWR,S_IRUSR|S_IWUSR);
+	int identite = atoi(argv[1]);
+	
+	printf("%d arrive a la piscine\n",identite);
+	printf("%d prend une cabine\n",identite);
+	prise(cabines);
+	printf("%d prend un panier\n",identite);
+	prise(paniers);
+	printf("%d se change\n",identite);
+	printf("%d libere la cabine\n",identite);
+	liberation(cabines);
+	printf("%d se baigne\n",identite);
+	for (int k = rand()%8+2; k >= 0; k--) sleep(1);
+	printf("%d prend une cabine\n",identite);
+	prise(cabines);
+	printf("%d se change\n",identite);
+	printf("%d libere le panier\n",identite);
+	liberation(paniers);
+	printf("%d libere la cabine\n",identite);
+	liberation(cabines);
+	printf("%d depart de la piscine\n",identite);
+	
+	
+	close(paniers);
+	close(cabines);
+	
+	exit(EXIT_SUCCESS);
+}
+
+Question 2 :
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <wait.h>
+
+
+void creer_baigneurs(int i,int nb){
+	if (i < nb){
+		if (fork() == 0){
+			creer_baigneurs(i+1,nb);
+			char identite[10];
+			sprintf(identite,"%d",i);
+			execl("./exo3a","exo3a",identite,NULL);
+		}
+	}	
+}
+
+
+int main(int argc,char *argv[]){
+	if (argc != 4){
+		exit(EXIT_FAILURE);
+	}
+	int nb_baigneurs = atoi(argv[1]);
+	int nb_paniers   = atoi(argv[2]);
+	int nb_cabines   = atoi(argv[3]);
+	
+	int paniers = open("./paniers",O_RDWR|O_CREAT,S_IRUSR|S_IWUSR);
+	lseek(paniers,0,SEEK_SET);
+	write(paniers,&nb_paniers,sizeof(int));
+	int cabines = open("./cabines",O_RDWR|O_CREAT,S_IRUSR|S_IWUSR);
+	lseek(cabines,0,SEEK_SET);
+	write(cabines,&nb_cabines,sizeof(int));
+	
+	creer_baigneurs(0,nb_baigneurs);
+	for(int i = 0; i < nb_baigneurs; i++) wait(NULL);
+	
+	close(paniers);
+	close(cabines);
+	
+	exit(EXIT_SUCCESS);
+}
+
+Question 4 :
+//une partie de terminal:
+hzhjhtb@ubuntu:~/HuangZhe/LU2IN015/TME4/exo3$ ./exo3b 8 3 3 
+0 arrive a la piscine
+0 prend une cabine
+0 prend un panier
+0 se change
+0 libere la cabine
+0 se baigne
+1 arrive a la piscine
+1 prend une cabine
+1 prend un panier
+
+//  1 ne peut pas prend un panier parce que maintenant le seul panier est 
+	déja utilisé par 0; 
+//  0 manque une cabine et il "sleep" toujours 
+
+//corrigé du exo3a.c 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+
+void prise(int fd){
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	
+	int nb;
+	lseek(fd,0,SEEK_SET);
+	read(fd,&nb,sizeof(int));
+	while (nb == 0){
+		sleep(1);
+		lseek(fd,0,SEEK_SET);
+		read(fd,&nb,sizeof(int));
+	}
+	nb--;
+	lseek(fd,0,SEEK_SET);
+	write(fd,&nb,sizeof(int));
+	
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+}
+
+void liberation(int fd){
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	
+	int nb;
+	lseek(fd,0,SEEK_SET);
+	read(fd,&nb,sizeof(int));
+	nb++;
+	lseek(fd,0,SEEK_SET);
+	write(fd,&nb,sizeof(int));
+	
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+}
+
+
+int main(int argc,char *argv[]){
+	if (argc != 2){
+		exit(EXIT_FAILURE);
+	}
+	
+	srand(getpid());
+	int paniers = open("./paniers",O_RDWR,S_IRUSR|S_IWUSR);
+	int cabines = open("./cabines",O_RDWR,S_IRUSR|S_IWUSR);
+	int identite = atoi(argv[1]);
+	
+	printf("%d arrive a la piscine\n",identite);
+	
+	int nb_cabine,nb_panier;
+	read(cabines,&nb_cabine,sizeof(int));
+	read(paniers,&nb_panier,sizeof(int));
+	while (nb_cabine <= 1 || nb_panier <= 0){
+		sleep(1);
+		lseek(cabines,0,SEEK_SET);
+		read(cabines,&nb_cabine,sizeof(int));
+		lseek(paniers,0,SEEK_SET);
+		read(paniers,&nb_panier,sizeof(int));
+	}
+	
+	prise(cabines);
+	printf("%d prend une cabine\n",identite);
+	prise(paniers);
+	printf("%d prend un panier\n",identite);
+	
+	printf("%d se change\n",identite);
+	
+	liberation(cabines);
+	printf("%d libere la cabine\n",identite);
+
+	printf("%d se baigne\n",identite);
+	for (int k = rand()%8+2; k >= 0; k--) sleep(1);
+	
+	prise(cabines);
+	printf("%d prend une cabine\n",identite);
+	
+	printf("%d se change\n",identite);
+	
+	liberation(paniers);
+	printf("%d libere le panier\n",identite);
+	
+	liberation(cabines);
+	printf("%d libere la cabine\n",identite);
+	
+	printf("%d depart de la piscine\n",identite);
+	
+	close(paniers);
+	close(cabines);
+	
+	exit(EXIT_SUCCESS);
+}
+
+
+
+
+
+
+
+
