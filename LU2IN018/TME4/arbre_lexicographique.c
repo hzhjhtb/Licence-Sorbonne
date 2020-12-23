@@ -141,8 +141,8 @@ PNoeud lire_dico(const char *nom_fichier) {
 	char mot[LONGUEUR_MAX_MOT];
 	while(fgets(mot,LONGUEUR_MAX_MOT,f))
     {
-     	mot[strlen(mot)] = '\0';
-    	if (strlen(mot)>=1){
+     	mot[strlen(mot)-1] = '\0';
+    	if (strlen(mot)>1){
       		ajouter_mot(dico, mot);
     	}
     }

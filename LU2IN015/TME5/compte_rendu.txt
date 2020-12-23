@@ -1,0 +1,35 @@
+=====================================================
+
+2I015 - COMPTE-RENDU TME 5 (Synchronisation)
+
+Noms, prénoms et numéro des étudiants du binôme :
+1)
+2)
+
+=====================================================
+
+
+EXERCICE 1 : Coco et Jaco
+=========================
+
+Recopiez le code source de votre programme (exo1.c) ici.
+
+
+EXERCICE 2 : Barrière de synchronisation
+========================================
+
+Recopiez le code source de votre programme (exo2.c) ici.
+
+
+EXERCICE 3 : Verrous vs. synchronisations
+=========================================
+
+Question 1 : 
+
+Recopiez le code source de votre programme (exo3a.c) ici.
+
+Question 2 :
+
+Recopiez le code source de votre programme (exo3b.c) ici.
+
+
