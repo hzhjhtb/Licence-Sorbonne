@@ -12,13 +12,140 @@ Noms, prénoms et numéro des étudiants du binôme :
 EXERCICE 1 : Coco et Jaco
 =========================
 
-Recopiez le code source de votre programme (exo1.c) ici.
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+
+int main(int argc, char **argv){
+	int synchro_1[2], synchro_2[2];
+	int lu_1 = 0, lu_2 = 0, lu_3 = 0;
+	
+	pipe(synchro_1);
+	pipe(synchro_2);
+	int synchro_3 = open("synchro_3",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(synchro_3, 0, SEEK_SET);
+	write(synchro_3, &lu_3, sizeof(int));	
+	srand(getpid());
+	write(synchro_1[1], &lu_1, sizeof(int));
+	close(synchro_1[1]);
+	
+	if (fork() == 0){
+		while(lu_3 == 0){
+			close(synchro_1[1]);
+			read(synchro_1[0], &lu_1, sizeof(int));
+			
+			printf("Coco\n");
+			lseek(synchro_3, 0, SEEK_SET);
+			read(synchro_3, &lu_3, sizeof(int));
+			
+			close(synchro_2[0]);
+			write(synchro_2[1], &lu_2, sizeof(int));
+			
+			sleep(rand()%3+1);
+		}
+		close(synchro_1[0]);
+		close(synchro_2[1]);
+		printf("le fils Coco se termine\n");
+		exit(EXIT_SUCCESS);
+	}
+	if (fork() == 0){
+		while(lu_3 == 0){
+			close(synchro_2[1]);
+			read(synchro_2[0], &lu_2, sizeof(int));
+			
+			printf("Jaco\n");
+			lseek(synchro_3, 0, SEEK_SET);
+			read(synchro_3, &lu_3, sizeof(int));
+			
+			close(synchro_1[0]);
+			write(synchro_1[1], &lu_1, sizeof(int));
+			
+			sleep(rand()%3+1);
+		}
+		close(synchro_2[0]);
+		close(synchro_1[1]);
+		printf("le fils Jaco se termine\n");
+		exit(EXIT_SUCCESS);
+	}
+	
+	for (int i = rand()%10+20; i >= 0; i--){
+		sleep(1);
+		lu_3++;
+	}
+	lseek(synchro_3, 0, SEEK_SET);
+	write(synchro_3, &lu_3, sizeof(int));
+	read(synchro_1[0], &lu_1, sizeof(int));
+	close(synchro_1[0]);	
+	
+	for (int i = 0; i < 2; i++) wait(NULL);
+	close(synchro_3);
+	printf("le père se termine\n");
+	exit(EXIT_SUCCESS);
+}
 
 
 EXERCICE 2 : Barrière de synchronisation
 ========================================
 
-Recopiez le code source de votre programme (exo2.c) ici.
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#define NB_FILS 3
+
+void fils(int i, int nb, int synchro_1[NB_FILS][2], int synchro_2[NB_FILS][2]){
+	int lu;
+	if (i < nb){
+		if (fork() == 0){
+			fils(i+1, nb, synchro_1, synchro_2);
+			printf("je sui fils %d\n", i);
+			sleep(rand()%11+5);
+			
+			close(synchro_1[i][0]);
+			write(synchro_1[i][1], &lu, sizeof(int));
+			close(synchro_1[i][1]);
+			
+			close(synchro_2[i][1]);
+			read(synchro_2[i][0], &lu, sizeof(int));
+			close(synchro_2[i][0]);
+			
+			printf("fils %d se termine\n", i);
+			
+			exit(EXIT_SUCCESS);
+		}
+	}
+} 
+
+int main(int argc, char **argv){
+	int synchro_1[NB_FILS][2], synchro_2[NB_FILS][2];
+	int lu;
+	for (int i = 0; i < NB_FILS; i++) pipe(synchro_1[i]);
+	for (int i = 0; i < NB_FILS; i++) pipe(synchro_2[i]);
+	srand(getpid());
+	
+	printf("On commence !\n");
+	fils(0, NB_FILS, synchro_1, synchro_2);
+	for (int i = 0; i < NB_FILS; i++){
+		close(synchro_1[i][1]);
+		read(synchro_1[i][0], &lu, sizeof(int));
+		close(synchro_1[i][0]);
+		printf("fils %d atteint la barrière de synchronisation!\n", i);
+	}
+	for (int i = 0; i < NB_FILS; i++){
+		close(synchro_2[i][0]);
+		write(synchro_2[i][1], &lu, sizeof(int));
+		close(synchro_2[i][1]);
+	}
+	
+	exit(EXIT_SUCCESS);
+}
+
 
 
 EXERCICE 3 : Verrous vs. synchronisations
@@ -26,10 +153,132 @@ EXERCICE 3 : Verrous vs. synchronisations
 
 Question 1 : 
 
-Recopiez le code source de votre programme (exo3a.c) ici.
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+void fils(char *chaine){
+	int verrou=open("verrou",O_CREAT|O_RDWR,S_IRUSR|S_IWUSR);
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_LOCK,0);
+	
+	int fic=open("fichier",O_CREAT|O_APPEND|O_WRONLY,S_IRUSR|S_IWUSR);
+	dup2(fic,1);
+	close(fic); 
+	printf("%d a ecrit %s\n",getpid(),chaine);
+	fflush(stdout);
+
+	srand(getpid());
+	int attente=rand()%4;
+	fprintf(stderr,"%d attente de %d\n",getpid(),attente);
+	sleep(attente);
+
+	fic=open("copie",O_CREAT|O_APPEND|O_WRONLY,S_IRUSR|S_IWUSR);
+	dup2(fic,1);
+	close(fic);
+	printf("%d a ecrit %s\n",getpid(),chaine);
+
+	lseek(verrou,0,SEEK_SET);
+	lockf(verrou,F_ULOCK,0);
+	close(verrou);
+	
+	exit(EXIT_SUCCESS);
+}
+
+int main(int argc,char **argv){
+
+	int i;
+	pid_t pid;
+	system("rm -f fichier copie");
+
+	for(i=1;i<argc;i++){
+		if((pid=fork())<0){
+			printf("Erreur fork\n");
+			exit(EXIT_FAILURE);
+		}else if(pid==0){
+			fils(argv[i]);
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
 
 Question 2 :
 
-Recopiez le code source de votre programme (exo3b.c) ici.
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+void fils(char *chaine){
+
+	int fic=open("fichier",O_CREAT|O_APPEND|O_WRONLY,S_IRUSR|S_IWUSR);
+	dup2(fic,1);
+	close(fic);
+	printf("%d a ecrit %s\n",getpid(),chaine);
+	fflush(stdout);
+
+	srand(getpid());
+	int attente=rand()%4;
+	fprintf(stderr,"%d attente de %d\n",getpid(),attente);
+	sleep(attente);
+
+	fic=open("copie",O_CREAT|O_APPEND|O_WRONLY,S_IRUSR|S_IWUSR);
+	dup2(fic,1);
+	close(fic);
+	printf("%d a ecrit %s\n",getpid(),chaine);
+}
+
+int main(int argc,char **argv){
+	int i,lu;
+	pid_t pid;
+	system("rm -f fichier copie");
+	int synchro[argc-2][2];
+	for (i = 0; i < argc-2; i++) pipe(synchro[i]);
+
+	for(i=1;i<argc;i++){
+		if((pid=fork())<0){
+			printf("Erreur fork\n");
+			exit(EXIT_FAILURE);
+		}else if(pid==0){
+			if (i == 1){
+				fils(argv[i]);
+
+				close(synchro[0][0]);
+				write(synchro[0][1],&lu,sizeof(int));
+				close(synchro[0][1]);
+				
+				exit(EXIT_SUCCESS);	
+			}
+			if ((i > 1) && (i < argc-1)){
+				close(synchro[i-2][1]);
+				read(synchro[i-2][0],&lu,sizeof(int));
+				close(synchro[i-2][0]);
+				
+				fils(argv[i]);
+				
+				close(synchro[i-1][0]);
+				write(synchro[i-1][1],&lu,sizeof(int));
+				close(synchro[i-1][1]);	
+				
+				exit(EXIT_SUCCESS);
+			}
+			if (i == argc-1){
+				close(synchro[i-2][1]);
+				read(synchro[i-2][0],&lu,sizeof(int));
+				close(synchro[i-2][0]);
+				
+				fils(argv[i]);
+				
+				exit(EXIT_SUCCESS);
+			}
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
 
 
