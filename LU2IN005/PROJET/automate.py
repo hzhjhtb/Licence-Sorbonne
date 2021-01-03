@@ -113,8 +113,9 @@ class Automate(AutomateBase):
         	indices = indices | {state.id}
         while (indice_libre in indices):
         	indice_libre = indice_libre-1
-        # state_plus: State
-        state_plus = State(indice_libre, False, False, "état +")
+        # state_plus: State 
+        ## on fait le lebal vaut "-1" car "+" ne peut pas etre operaté littéralement
+        state_plus = State(indice_libre, False, False, "-1")
         auto_complet.addState(state_plus)
        	## on complete l'automate 
        	# state: State
@@ -214,21 +215,163 @@ class Automate(AutomateBase):
         """ Automate -> Automate
         rend  l'automate acceptant pour langage le complémentaire du langage de a
         """
-              
+        ## On suppose que auto est déterministe est complet
+        # autoRes : Automate
+        autoRes = auto
+        # sinon on le déterministe et/ou complète
+        if not (Automate.estDeterministe(autoRes)):
+        	autoRes = Automate.determinisation(autoRes)
+        if not (Automate.estComplet(autoRes,alphabet)):
+        	autoRes = Automate.completeAutomate(autoRes,alphabet)
+        ## F' = S\F
+        # i : State
+        for i in autoRes.listStates:
+            if i.fin :
+            	i.fin = False
+            else: 
+            	i.fin = True
+        return autoRes
    
     @staticmethod
     def intersection (auto0, auto1):
         """ Automate x Automate -> Automate
         rend l'automate acceptant pour langage l'intersection des langages des deux automates
         """
-        return
+        ## On cree les tuple des States
+        # state_tuple : List[Tuple[State,State]]
+        state_tuple = list(product(auto0.listStates,auto1.listStates))
+        state_tuple = list(set(state_tuple))
+        ## On cherche les Transitions
+        # T : List[Transition]
+        T = []
+        # cpt : int
+        cpt = 0
+        #state_set : List[State]
+        state_set = []
+        #label_set : List[Tuple[State.label,State.label]]
+        label_set = []
+        # l : char
+        for l in auto0.getAlphabetFromTransitions():
+        	# s_t0,s_t1 : Tuple[State,State]
+        	for s_t0 in state_tuple:
+        		for s_t1 in state_tuple:
+        			## (s1,a,s1') appartient à T1 
+        			if not(Transition(s_t0[0],l,s_t1[0]) in auto0.listTransitions):
+        				continue
+        			## (s2,a,s2') appartient à T2
+        			if not(Transition(s_t0[1],l,s_t1[1]) in auto1.listTransitions):
+        				continue
+        			## depart est le (s1,s2), arrive est le (s1',s2')
+        			# depart : State
+        			s1_s2 = (int(s_t0[0].label), int(s_t0[1].label))
+        			if s1_s2 not in label_set:
+        				cpt = cpt + 1
+        				depart = State(cpt, False, False, s1_s2)
+        				label_set.append(s1_s2)
+        				if ((s_t0[0].init) and (s_t0[1].init)):
+        					depart.init = True
+        				if ((s_t0[0].fin) and (s_t0[1].fin)):
+        					depart.fin = True
+        				state_set.append(depart)
+        			else:
+        				for state in state_set:
+        					if s1_s2 == state.label:
+        						depart = state
+        						break
+        			# arrive : State
+        			s2_s1 = (int(s_t1[0].label), int(s_t1[1].label))
+        			if s2_s1 not in label_set:
+        				cpt = cpt + 1
+        				arrive = State(cpt, False, False, s2_s1)
+        				label_set.append(s2_s1)
+        				if ((s_t1[0].init) and (s_t1[1].init)):
+        					arrive.init = True
+        				if ((s_t1[0].fin) and (s_t1[1].fin)):
+        					arrive.fin = True
+        				state_set.append(arrive)
+        			else:
+        				for state in state_set:
+        					if s2_s1 == state.label:
+        						arrive = state
+        						break
+        			## On cree la Transition par les deux States
+        			T.append(Transition(depart,l,arrive))
+        ### on crée l'automate par la liste des transitions 
+        return Automate(T)
 
     @staticmethod
     def union (auto0, auto1):
         """ Automate x Automate -> Automate
         rend l'automate acceptant pour langage l'union des langages des deux automates
         """
-        return
+        ## On suppose que auto0 et auto1 sont complet sinon on les complète
+        alphabet = auto0.getAlphabetFromTransitions()
+        if not(Automate.estComplet(auto0,alphabet)):
+        	auto0 = Automate.completeAutomate(auto0,alphabet)
+        if not(Automate.estComplet(auto1,alphabet)):
+        	auto1 = Automate.completeAutomate(auto1,alphabet)
+        ## On cree les tuple des States
+        # state_tuple : List[Tuple[State,State]]
+        state_tuple = list(product(auto0.listStates,auto1.listStates))
+        state_tuple = list(set(state_tuple))
+        ## On cherche les Transitions
+        # T : List[Transition]
+        T = []
+        # cpt : int
+        cpt = 0
+        #state_set : List[State]
+        state_set = []
+        #label_set : List[Tuple[State.label,State.label]]
+        label_set = []
+        # l : char
+        for l in alphabet:
+        	# s_t0,s_t1 : Tuple[State,State]
+        	for s_t0 in state_tuple:
+        		for s_t1 in state_tuple:
+        			## (s1,a,s1') appartient à T1 
+        			if not(Transition(s_t0[0],l,s_t1[0]) in auto0.listTransitions):
+        				continue
+        			## (s2,a,s2') appartient à T2
+        			if not(Transition(s_t0[1],l,s_t1[1]) in auto1.listTransitions):
+        				continue
+        			## depart est le (s1,s2), arrive est le (s1',s2')
+        			# depart : State
+        			s1_s2 = (int(s_t0[0].label), int(s_t0[1].label))
+        			if s1_s2 not in label_set:
+        				cpt = cpt + 1
+        				depart = State(cpt, False, False, s1_s2)
+        				label_set.append(s1_s2)
+        				if ((s_t0[0].init) and (s_t0[1].init)):
+        					depart.init = True
+        				if ((s_t0[0].fin) or (s_t0[1].fin)):
+        					depart.fin = True
+        				state_set.append(depart)
+        			else:
+        				for state in state_set:
+        					if s1_s2 == state.label:
+        						depart = state
+        						break
+        			# arrive : State
+        			s2_s1 = (int(s_t1[0].label), int(s_t1[1].label))
+        			if s2_s1 not in label_set:
+        				cpt = cpt + 1
+        				arrive = State(cpt, False, False, s2_s1)
+        				label_set.append(s2_s1)
+        				if ((s_t1[0].init) and (s_t1[1].init)):
+        					arrive.init = True
+        				if ((s_t1[0].fin) or (s_t1[1].fin)):
+        					arrive.fin = True
+        				state_set.append(arrive)
+        			else:
+        				for state in state_set:
+        					if s2_s1 == state.label:
+        						arrive = state
+        						break
+        			## On cree la Transition par les deux States
+        			T.append(Transition(depart,l,arrive))
+        ### on crée l'automate par la liste des transitions 
+        return Automate(T)
+
         
 
    

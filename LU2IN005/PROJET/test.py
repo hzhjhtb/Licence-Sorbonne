@@ -101,4 +101,17 @@ else:
 	print("L'automate n'est pas déterministe\n")
 	print(Automate.determinisation(auto3))
 	Automate.determinisation(auto3).show("A3_listeTrans")
+	
+
+print(Automate.complementaire(auto,{"a","b"}))
+
+auto4_1 = Automate.creationAutomate("testInter1.txt")
+print(auto4_1)
+auto4_2 = Automate.creationAutomate("testInter2.txt")
+print(auto4_2)
+auto4 = Automate.intersection(auto4_1,auto4_2)
+print(auto4)
+auto4.show("A4_listeTrans")
+Automate.union(auto4_1,auto4_2).show("A5_listeTrans")
+
 
