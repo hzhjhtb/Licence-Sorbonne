@@ -216,21 +216,19 @@ class Automate(AutomateBase):
         rend  l'automate acceptant pour langage le complémentaire du langage de a
         """
         ## On suppose que auto est déterministe est complet
-        # autoRes : Automate
-        autoRes = auto
         # sinon on le déterministe et/ou complète
-        if not (Automate.estDeterministe(autoRes)):
-        	autoRes = Automate.determinisation(autoRes)
-        if not (Automate.estComplet(autoRes,alphabet)):
-        	autoRes = Automate.completeAutomate(autoRes,alphabet)
+        if not (Automate.estDeterministe(auto)):
+        	auto = Automate.determinisation(auto)
+        if not (Automate.estComplet(auto,alphabet)):
+        	auto = Automate.completeAutomate(auto,alphabet)
         ## F' = S\F
         # i : State
-        for i in autoRes.listStates:
+        for i in auto.listStates:
             if i.fin :
             	i.fin = False
             else: 
             	i.fin = True
-        return autoRes
+        return auto
    
     @staticmethod
     def intersection (auto0, auto1):
@@ -382,14 +380,47 @@ class Automate(AutomateBase):
         """ Automate x Automate -> Automate
         rend l'automate acceptant pour langage la concaténation des langages des deux automates
         """
-        return
+        # s_new : List[State]
+        S_new = []
+        for state in auto1.listStates:
+        	S_new.append(state)
+        for state in auto2.listStates:
+        	S_new.append(state)
         
-       
+        # T_new : List[Transition]
+        T_new = []
+        for transition in auto1.listTransitions:
+            T_new.append(transition)
+        for transition in auto2.listTransitions:
+            T_new.append(transition)     
+        for transition in auto1.listTransitions:
+        	if transition.stateDest in auto1.getListFinalStates():
+        		for state in auto2.getListInitialStates():
+        			# t_new : Transition
+        			t_new = Transition(transition.stateSrc, transition.etiquette, state)
+        			T_new.append(t_new)           
+        # I1_F1 : bool
+        I1_F1 = False
+        for state1 in auto1.getListInitialStates():
+            if (state1.fin):
+                I1_F1 = True
+                break
+        for state in S_new:
+            if state in auto1.getListFinalStates():
+                state.fin = False
+            if ((I1_F1 == False) and (state in auto2.getListInitialStates())):
+                state.init = False
+		
+        return Automate(T_new) 							
+					
+
+
     @staticmethod
     def etoile (auto):
         """ Automate  -> Automate
         rend l'automate acceptant pour langage l'étoile du langage de a
         """
+        
         return
 
 

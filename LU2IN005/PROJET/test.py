@@ -115,3 +115,9 @@ auto4.show("A4_listeTrans")
 Automate.union(auto4_1,auto4_2).show("A5_listeTrans")
 
 
+auto5_1 = Automate.creationAutomate("testConca1.txt")
+print(auto5_1)
+auto5_2 = Automate.creationAutomate("testConca2.txt")
+print(auto5_2)
+Automate.concatenation(auto5_1,auto5_2).show("A6_listeTrans")
+
