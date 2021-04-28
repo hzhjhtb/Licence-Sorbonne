@@ -1,0 +1,4 @@
+plot "liste.txt" using 1:2 title 'Liste' with lines
+set term postscript portrait
+set output "liste_courbes_vitesse.ps"
+set size 0.7, 0.7
