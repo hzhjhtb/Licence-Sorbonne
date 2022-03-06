@@ -1,0 +1,47 @@
+Ex1
+    Q2:
+        2.Non
+        3.Non
+        4.Assemble: operation completed successfully.
+        5.Text Segment   
+          0x224c0021      
+          0x00400000
+    Q3:
+        1.001 000 10010 01100 0000 0000 0010 0001
+          Inverse : 000 000 10010 01100 0000 0000 0010 0001
+        2.addu $0, $18, $12
+        4.La valeur de $12 est encore 0x00000021.
+    Q4:
+        Assemble: operation completed with errors.
+
+Ex2
+    Q1:
+        1. La valeur d'affichage change après la modification de la valeur du registre $16.
+
+Ex4
+    # Operations logiques
+    ori $8, $0, 0x00FF # $8 = 0000 00FF
+    ori $9, $0, 0xFFF0 # $9 = 0000 FFF0
+    and $10, $9, $8 # $10 = 0000 00F0
+    xor $11, $9, $8 # $11 = 0000 FF0F
+    xor $11, $11, $11 # $11 = 0000 0000
+    # Decalages
+    ori $9, $0, 25
+    sll $10, $9, 1 # $10 = 0000 0032    
+    sll $11, $9, 2 # $11 = 0000 0064
+    sll $12, $9, 3 # $12 = 0000 00C8
+    srl $10, $9, 1 # $10 = 0000 000C
+    srl $10, $9, 2 # $10 = 0000 0006
+    srl $10, $9, 3 # $10 = 0000 0003
+    addi $9, $0, -25
+    srl $10, $9, 1 # $10 = 7FFF FFF3
+    srl $11, $9, 2 # $11 = 3FFF FFF9
+    sra $16, $9, 1 # $16 = FFFF FFF3
+    sra $17, $9, 2 # $17 = FFFF FFF9
+    sra $18, $9, 3 # $18 = FFFF FFFC
+    # Comparaisons
+    ori $9, $0, 2
+    ori $8, $0, 4
+    slt $11, $8, $9 # $11 = 0000 0000
+    slt $12, $9, $8 # $12 = 0000 0001
+    ori $2, $0, 10
